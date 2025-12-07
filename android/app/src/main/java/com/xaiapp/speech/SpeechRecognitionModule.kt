@@ -17,6 +17,7 @@ import com.facebook.react.bridge.ReactApplicationContext
 import com.facebook.react.bridge.ReactContextBaseJavaModule
 import com.facebook.react.bridge.ReactMethod
 import com.facebook.react.bridge.WritableMap
+import com.facebook.react.bridge.UiThreadUtil
 
 class SpeechRecognitionModule(private val reactContext: ReactApplicationContext) :
     ReactContextBaseJavaModule(reactContext), ActivityEventListener {
@@ -76,28 +77,31 @@ class SpeechRecognitionModule(private val reactContext: ReactApplicationContext)
       return
     }
 
-    try {
-      currentPromise = promise
-      isListening = true
+    // SpeechRecognizer must be created and used on the main thread
+    UiThreadUtil.runOnUiThread {
+      try {
+        currentPromise = promise
+        isListening = true
 
-      speechRecognizer = SpeechRecognizer.createSpeechRecognizer(reactContext).apply {
-        setRecognitionListener(createRecognitionListener())
+        speechRecognizer = SpeechRecognizer.createSpeechRecognizer(reactContext).apply {
+          setRecognitionListener(createRecognitionListener())
+        }
+
+        val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
+          putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
+          putExtra(RecognizerIntent.EXTRA_LANGUAGE, language)
+          putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true)
+          putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 1)
+        }
+
+        speechRecognizer?.startListening(intent)
+        Log.d(TAG, "Started listening for speech recognition")
+      } catch (e: Exception) {
+        Log.e(TAG, "Error starting speech recognition", e)
+        isListening = false
+        currentPromise = null
+        promise.reject("START_FAILED", "Failed to start speech recognition: ${e.message}", e)
       }
-
-      val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
-        putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
-        putExtra(RecognizerIntent.EXTRA_LANGUAGE, language)
-        putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true)
-        putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 1)
-      }
-
-      speechRecognizer?.startListening(intent)
-      Log.d(TAG, "Started listening for speech recognition")
-    } catch (e: Exception) {
-      Log.e(TAG, "Error starting speech recognition", e)
-      isListening = false
-      currentPromise = null
-      promise.reject("START_FAILED", "Failed to start speech recognition: ${e.message}", e)
     }
   }
 
@@ -111,14 +115,16 @@ class SpeechRecognitionModule(private val reactContext: ReactApplicationContext)
       return
     }
 
-    try {
-      speechRecognizer?.stopListening()
-      isListening = false
-      promise.resolve(true)
-      Log.d(TAG, "Stopped listening for speech recognition")
-    } catch (e: Exception) {
-      Log.e(TAG, "Error stopping speech recognition", e)
-      promise.reject("STOP_FAILED", "Failed to stop speech recognition: ${e.message}", e)
+    UiThreadUtil.runOnUiThread {
+      try {
+        speechRecognizer?.stopListening()
+        isListening = false
+        promise.resolve(true)
+        Log.d(TAG, "Stopped listening for speech recognition")
+      } catch (e: Exception) {
+        Log.e(TAG, "Error stopping speech recognition", e)
+        promise.reject("STOP_FAILED", "Failed to stop speech recognition: ${e.message}", e)
+      }
     }
   }
 
@@ -127,16 +133,18 @@ class SpeechRecognitionModule(private val reactContext: ReactApplicationContext)
    */
   @ReactMethod
   fun cancelListening(promise: Promise) {
-    try {
-      speechRecognizer?.cancel()
-      isListening = false
-      currentPromise?.reject("CANCELLED", "Speech recognition was cancelled")
-      currentPromise = null
-      promise.resolve(true)
-      Log.d(TAG, "Cancelled speech recognition")
-    } catch (e: Exception) {
-      Log.e(TAG, "Error cancelling speech recognition", e)
-      promise.reject("CANCEL_FAILED", "Failed to cancel speech recognition: ${e.message}", e)
+    UiThreadUtil.runOnUiThread {
+      try {
+        speechRecognizer?.cancel()
+        isListening = false
+        currentPromise?.reject("CANCELLED", "Speech recognition was cancelled")
+        currentPromise = null
+        promise.resolve(true)
+        Log.d(TAG, "Cancelled speech recognition")
+      } catch (e: Exception) {
+        Log.e(TAG, "Error cancelling speech recognition", e)
+        promise.reject("CANCEL_FAILED", "Failed to cancel speech recognition: ${e.message}", e)
+      }
     }
   }
 
@@ -145,16 +153,18 @@ class SpeechRecognitionModule(private val reactContext: ReactApplicationContext)
    */
   @ReactMethod
   fun destroy(promise: Promise) {
-    try {
-      speechRecognizer?.destroy()
-      speechRecognizer = null
-      isListening = false
-      currentPromise = null
-      promise.resolve(true)
-      Log.d(TAG, "Destroyed speech recognizer")
-    } catch (e: Exception) {
-      Log.e(TAG, "Error destroying speech recognizer", e)
-      promise.reject("DESTROY_FAILED", "Failed to destroy speech recognizer: ${e.message}", e)
+    UiThreadUtil.runOnUiThread {
+      try {
+        speechRecognizer?.destroy()
+        speechRecognizer = null
+        isListening = false
+        currentPromise = null
+        promise.resolve(true)
+        Log.d(TAG, "Destroyed speech recognizer")
+      } catch (e: Exception) {
+        Log.e(TAG, "Error destroying speech recognizer", e)
+        promise.reject("DESTROY_FAILED", "Failed to destroy speech recognizer: ${e.message}", e)
+      }
     }
   }
 

@@ -121,7 +121,14 @@ export default function VoiceToText({ onTextGenerated }: VoiceToTextProps) {
         return;
       }
 
-      if (!available) {
+      let speechAvailable = available;
+      // Some devices report不可用 before权限授予，权限拿到后再复查一次
+      if (!speechAvailable) {
+        speechAvailable = await isAvailable();
+        setIsSpeechAvailable(speechAvailable);
+      }
+
+      if (!speechAvailable) {
         Alert.alert(
           '不可用',
           '语音识别功能在此设备上不可用，请检查是否已安装Google语音服务。',
