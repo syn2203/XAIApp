@@ -1,3 +1,5 @@
 <resources>
     <string name="app_name">AIotApp</string>
+    <string name="automation_service_label">AIotApp 自动化服务</string>
+    <string name="automation_service_description">为自动执行跨应用点击和粘贴操作提供的无障碍服务</string>
 </resources>
