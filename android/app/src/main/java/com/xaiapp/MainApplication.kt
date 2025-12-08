@@ -8,6 +8,7 @@ import com.facebook.react.ReactNativeApplicationEntryPoint.loadReactNative
 import com.facebook.react.defaults.DefaultReactHost.getDefaultReactHost
 import com.xaiapp.automation.AutomationPackage
 import com.xaiapp.speech.SpeechRecognitionPackage
+import com.xaiapp.whisper.WhisperPackage
 
 class MainApplication : Application(), ReactApplication {
 
@@ -20,6 +21,7 @@ class MainApplication : Application(), ReactApplication {
           // add(MyReactNativePackage())
           add(AutomationPackage())
           add(SpeechRecognitionPackage())
+          add(WhisperPackage())
         },
     )
   }
